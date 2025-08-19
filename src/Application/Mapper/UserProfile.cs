@@ -1,5 +1,6 @@
 ﻿namespace Application.Mapper
 {
+    using Application.Dtos.Request;
     using Application.Dtos.Response;
     using AutoMapper;
     using Domain.Models;
@@ -8,7 +9,12 @@
     {
         public UserProfile()
         {
-            CreateMap<User, UserDto>()
+            CreateMap<User, UserResponseDto>()
+                .ReverseMap();
+
+            CreateMap<User, LoginUserRequestDto>()
+                .ForMember(d => d.Password, opts => opts
+                .Ignore())
                 .ReverseMap();
         }
     }

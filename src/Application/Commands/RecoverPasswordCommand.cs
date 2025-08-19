@@ -3,7 +3,7 @@
     using Application.Dtos.Response;
     using MediatR;
 
-    public class RecoverPasswordCommand : IRequest<UserDto>
+    public class RecoverPasswordCommand : IRequest<UserResponseDto>
     {
         public int Id { get; set; }
         public required string Email { get; set; }

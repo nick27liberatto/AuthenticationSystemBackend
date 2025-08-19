@@ -1,9 +1,10 @@
 ﻿namespace Application.Validators
 {
     using Application.Commands;
+    using Application.Dtos.Request;
     using FluentValidation;
 
-    public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
+    public class RegisterUserValidator : AbstractValidator<RegisterUserRequestDto>
     {
         public RegisterUserValidator()
         {
@@ -17,6 +18,8 @@
             RuleFor(x => x.Email)
                 .NotEmpty()
                 .WithMessage("O e-mail é obrigatório.")
+                .MaximumLength(100)
+                .WithMessage("O e-mail deve ter no máximo 100 caracteres.")
                 .EmailAddress()
                 .WithMessage("E-mail Inválido.");
 

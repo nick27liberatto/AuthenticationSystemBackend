@@ -1,15 +1,18 @@
 ﻿namespace Application.Validators
 {
-    using Application.Commands;
+    using Application.Dtos.Request;
+    using Application.Queries;
     using FluentValidation;
 
-    public class LoginUserValidator : AbstractValidator<LoginUserCommand>
+    public class LoginUserValidator : AbstractValidator<LoginUserRequestDto>
     {
         public LoginUserValidator()
         {
             RuleFor(x => x.Email)
                 .NotEmpty()
                 .WithMessage("O e-mail é obrigatório.")
+                .MaximumLength(100)
+                .WithMessage("O e-mail deve ter no máximo 100 caracteres.")
                 .EmailAddress()
                 .WithMessage("E-mail Inválido.");
 

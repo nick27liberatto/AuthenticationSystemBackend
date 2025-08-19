@@ -22,6 +22,11 @@
                 .HasColumnType("VARCHAR(50)")
                 .IsRequired(true);
 
+            builder.Property(x => x.Email)
+                .HasColumnName("EMAIL")
+                .HasColumnType("VARCHAR(100)")
+                .IsRequired(true);
+
             builder.Property(x => x.Password)
                 .HasColumnName("PASSWORD")
                 .HasColumnType("VARCHAR(100)")

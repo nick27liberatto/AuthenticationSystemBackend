@@ -1,18 +1,13 @@
 ﻿namespace Application.Validators
 {
     using Application.Commands;
+    using Application.Dtos.Request;
     using FluentValidation;
 
-    public class UpdatePasswordValidator : AbstractValidator<UpdatePasswordCommand>
+    public class UpdatePasswordValidator : AbstractValidator<UpdatePasswordRequestDto>
     {
         public UpdatePasswordValidator()
         {
-            RuleFor(x => x.Id)
-                .NotEmpty()
-                .WithMessage("Id é Obrigatório!")
-                .GreaterThan(0)
-                .WithMessage("Id deve ser maior que zero!");
-
             RuleFor(x => x.OldPassword)
                 .NotEmpty()
                 .WithMessage("A senha antiga é obrigatória.")

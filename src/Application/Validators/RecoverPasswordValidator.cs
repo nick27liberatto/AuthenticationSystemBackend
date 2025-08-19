@@ -1,21 +1,18 @@
 ﻿namespace Application.Validators
 {
     using Application.Commands;
+    using Application.Dtos.Request;
     using FluentValidation;
 
-    public class RecoverPasswordValidator : AbstractValidator<RecoverPasswordCommand>
+    public class RecoverPasswordValidator : AbstractValidator<RecoverPasswordRequestDto>
     {
         public RecoverPasswordValidator()
         {
-            RuleFor(x => x.Id)
-                .NotEmpty()
-                .WithMessage("Id é Obrigatório!")
-                .GreaterThan(0)
-                .WithMessage("Id deve ser maior que zero!");
-
             RuleFor(x => x.Email)
                 .NotEmpty()
                 .WithMessage("O e-mail é obrigatório.")
+                .MaximumLength(100)
+                .WithMessage("O e-mail deve ter no máximo 100 caracteres.")
                 .EmailAddress()
                 .WithMessage("E-mail Inválido.");
 

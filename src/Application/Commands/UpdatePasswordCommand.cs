@@ -3,7 +3,7 @@
     using Application.Dtos.Response;
     using MediatR;
 
-    public class UpdatePasswordCommand : IRequest<UserDto>
+    public class UpdatePasswordCommand : IRequest<UserResponseDto>
     {
         public int Id { get; set; }
         public required string OldPassword { get; set; }

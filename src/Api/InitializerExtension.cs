@@ -70,15 +70,9 @@ public class InitializerExtension
 
     public static void ConfigureMiddleWare(WebApplication app)
     {
-        if (app.Environment.IsDevelopment())
-        {
-            app.UseDeveloperExceptionPage();
             app.UseSwagger();
-            app.UseSwaggerUI(c =>
-            {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
-            });
-        }
+            app.UseSwaggerUI();
+
         app.UseHttpsRedirection();
 
         app.UseRouting();
@@ -87,9 +81,6 @@ public class InitializerExtension
 
         app.UseAuthorization();
 
-        app.UseEndpoints(endpoints =>
-        {
-            endpoints.MapControllers();
-        });
-    }
+        app.MapControllers();
+    }   
 }

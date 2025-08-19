@@ -3,7 +3,7 @@
     using Application.Dtos.Response;
     using MediatR;
 
-    public class DeleteUserCommand : IRequest<UserDto>
+    public class DeleteUserCommand : IRequest<UserResponseDto>
     {
         public int Id { get; set; }
     }
