@@ -31,7 +31,7 @@
             }
 
 
-            return new OkObjectResult(_mapper.Map<UserResponseDto>(users)); 
+            return new OkObjectResult(_mapper.Map<IEnumerable<UserResponseDto>>(users)); 
         }
     }
 }

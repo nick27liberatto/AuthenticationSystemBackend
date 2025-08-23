@@ -19,31 +19,31 @@ public class UserController : ControllerBase
         _mapper = mapper;
     }
 
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<UserResponseDto>>> Search([FromQuery] UserResponseDto dto)
+    [HttpGet("search")]
+    public async Task<ActionResult<IEnumerable<UserResponseDto>>> Search([FromQuery] SearchUsersQuery dto)
     {
         var query = _mapper.Map<SearchUsersQuery>(dto);
-        var result = await _mediator.Send(query);
-        return Ok(result);
+        var response = await _mediator.Send(query);
+        return Ok(response.Result);
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> Get([FromRoute] int id)
+    public async Task<ActionResult<UserResponseDto>> GetById([FromRoute] int id)
     {
-        var result = await _mediator.Send(new GetUserByIdQuery { Id = id });
-        return result is null ? NotFound() : Ok(result);
-    }
-
-    [HttpGet("/login")]
-    public async Task<ActionResult<UserResponseDto>> Login([FromRoute] LoginUserRequestDto dto)
-    {
-        var query = _mapper.Map<LoginUserQuery>(dto);
-        var response = await _mediator.Send(query);
+        var response = await _mediator.Send(new GetUserByIdQuery { Id = id });
         return response;
     }
 
-    [HttpPost]
-    public async Task<ActionResult<UserResponseDto>> Create([FromBody] UserResponseDto dto)
+    [HttpPost("login")]
+    public async Task<ActionResult<LoginUserResponseDto>> Login([FromBody] LoginUserRequestDto dto)
+    {
+        var command = _mapper.Map<LoginUserCommand>(dto);
+        var response = await _mediator.Send(command);
+        return response;
+    }
+
+    [HttpPost("register")]
+    public async Task<ActionResult<UserResponseDto>> Register([FromBody] RegisterUserRequestDto dto)
     {
         var command = _mapper.Map<RegisterUserCommand>(dto);
         var response = await _mediator.Send(command);
@@ -55,8 +55,8 @@ public class UserController : ControllerBase
     {
         var command = _mapper.Map<UpdatePasswordCommand>(dto);
         command.Id = id;
-        var result = await _mediator.Send(command);
-        return result is null ? NotFound() : Ok(result);
+        var response = await _mediator.Send(command);
+        return response is null ? NotFound() : Ok(response);
 
     }
 
@@ -65,16 +65,16 @@ public class UserController : ControllerBase
     {
         var command = _mapper.Map<RecoverPasswordCommand>(dto);
         command.Id = id;
-        var result = await _mediator.Send(command);
-        return result is null ? NotFound() : Ok(result);
+        var response = await _mediator.Send(command);
+        return response is null ? NotFound() : Ok(response);
 
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id}/delete")]
     public async Task<IActionResult> Delete([FromRoute] int id)
     {
-        var result = await _mediator.Send(new DeleteUserCommand { Id = id });
-        return result is null ? NotFound() : Ok(result);
+        var response = await _mediator.Send(new DeleteUserCommand { Id = id });
+        return response is null ? NotFound() : Ok(response);
 
     }
 }

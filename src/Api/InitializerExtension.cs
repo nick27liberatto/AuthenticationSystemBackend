@@ -1,15 +1,18 @@
 ﻿namespace Api;
 
 using Application.Handlers;
+using Application.Mapper;
 using Application.Validators;
 using Domain.Interfaces;
+using FluentValidation;
 using Infrastructure.Context;
 using Infrastructure.Repository;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
-using FluentValidation;
-using Application.Mapper;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
 
 public class InitializerExtension
 {
@@ -34,7 +37,10 @@ public class InitializerExtension
         builder.Services.AddMediatR(cfg =>
             cfg.RegisterServicesFromAssembly(typeof(RegisterUserHandler).Assembly));
 
-        builder.Services.AddAutoMapper(typeof(UserProfile).Assembly);
+        builder.Services.AddAutoMapper(cfg =>
+        {
+            cfg.AddProfile<UserProfile>();
+        });
 
         builder.Services.AddValidatorsFromAssembly(typeof(RegisterUserValidator).Assembly);
 
@@ -65,6 +71,29 @@ public class InitializerExtension
                       .AllowAnyMethod()
                       .AllowAnyHeader();
             });
+        });
+
+        var keyString = builder.Configuration.GetValue<string>("Jwt:Key");
+        var key = Encoding.ASCII.GetBytes(keyString);
+        var issuer = builder.Configuration.GetValue<string>("Jwt:Issuer");
+        var audience = builder.Configuration.GetValue<string>("Jwt:Audience");
+
+        builder.Services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = issuer,
+                ValidAudience = audience,
+                IssuerSigningKey = new SymmetricSecurityKey(key)
+            };
         });
     }
 
