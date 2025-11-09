@@ -37,7 +37,7 @@
             {
                 var user = await _userManager.FindByEmailAsync(request.Dto.Email);
                 if (user == null || !user.IsActive)
-                    return Result.Fail(MessageError.InactiveUser);
+                    return Result.Fail(MessageError.UserNotFound);
 
                 var result = await _userManager
                     .ResetPasswordAsync(user, request.Dto.Token, request.Dto.NewPassword);

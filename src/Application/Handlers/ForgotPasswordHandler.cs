@@ -53,8 +53,8 @@
                 {
                     await _emailSender.SendEmailAsync(
                         user.Email!,
-                        ResetPasswordEmail.Title,
-                        string.Format(ResetPasswordEmail.Body, user.UserName, resetLink)
+                        "Reset Password",
+                        $"<p>Hello {user.UserName},</p><p>To reset your password, click in the link below:</p><p><a href='{resetLink}'>Reset Password</a></p>"
                     );
                 }
                 catch (Exception ex)
