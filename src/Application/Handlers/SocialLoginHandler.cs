@@ -48,17 +48,36 @@
                 else if (string.Equals(request.Dto.Provider, "GitHub", StringComparison.OrdinalIgnoreCase))
                 {
                     using var client = new HttpClient();
+
+                    var tokenRequest = new Dictionary<string, string>
+                    {
+                        ["client_id"] = Environment.GetEnvironmentVariable("GITHUB_CLIENT_ID")!,
+                        ["client_secret"] = Environment.GetEnvironmentVariable("GITHUB_CLIENT_SECRET")!,
+                        ["code"] = request.Dto.Token
+                    };
+
+                    var tokenResponse = await client.PostAsync(
+                        "https://github.com/login/oauth/access_token",
+                        new FormUrlEncodedContent(tokenRequest)
+                    );
+
+                    tokenResponse.EnsureSuccessStatusCode();
+
+                    var tokenContent = await tokenResponse.Content.ReadAsStringAsync();
+                    var queryParams = System.Web.HttpUtility.ParseQueryString(tokenContent);
+                    var accessToken = queryParams["access_token"];
+
+                    if (string.IsNullOrEmpty(accessToken))
+                        return Result.Fail<AuthResultDto>("Falha ao obter access token do GitHub.");
+
                     client.DefaultRequestHeaders.Add("User-Agent", "AuthenticationSystem");
-                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", request.Dto.Token);
-                    
+                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
                     var response = await client.GetAsync("https://api.github.com/user");
-                    
-                    _logger.LogInformation(response.ReasonPhrase);
-                    
                     response.EnsureSuccessStatusCode();
 
                     var json = await response.Content.ReadAsStringAsync();
-                    var userData = JsonSerializer.Deserialize<GitHubUser>(json);
+                    var userData = JsonSerializer.Deserialize<GitHubUser>(json)!;
 
                     username = userData.Login;
                     fullName = userData.Name;
@@ -67,16 +86,13 @@
                     responseEmails.EnsureSuccessStatusCode();
 
                     var jsonEmails = await responseEmails.Content.ReadAsStringAsync();
-                    var emails = System.Text.Json.JsonSerializer.Deserialize<List<GitHubEmail>>(jsonEmails);
+                    var emails = JsonSerializer.Deserialize<List<GitHubEmail>>(jsonEmails);
 
                     email = emails?.FirstOrDefault(e => e.Primary && e.Verified)?.Email
                             ?? emails?.FirstOrDefault()?.Email
                             ?? $"{userData.Login}@github.local";
                 }
-                else
-                {
-                    return Result.Fail<AuthResultDto>(MessageError.UnsuportedSocialProvider);
-                }
+
 
                 var user = await _userManager.FindByEmailAsync(email);
                 if (user == null)
