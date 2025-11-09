@@ -3,22 +3,22 @@
     using Application.Commands;
     using Application.Constants.Validation;
     using FluentValidation;
-    public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
+
+    public class ResetPasswordValidator : AbstractValidator<ResetPasswordCommand>
     {
-        public RegisterUserValidator()
+        public ResetPasswordValidator()
         {
             RuleFor(x => x.Dto)
                 .NotNull().WithMessage(ValidationRules.DtoRequired);
-
-            RuleFor(x => x.Dto.Username)
-           .NotEmpty().WithMessage(ValidationRules.NameRequired)
-           .MaximumLength(50).WithMessage(ValidationRules.MaxNameLengthExceeded);
 
             RuleFor(x => x.Dto.Email)
                 .NotEmpty().WithMessage(ValidationRules.EmailRequired)
                 .EmailAddress().WithMessage(ValidationRules.EmailValidRequired);
 
-            RuleFor(x => x.Dto.Password)
+            RuleFor(x => x.Dto.Token)
+                .NotEmpty().WithMessage(ValidationRules.TokenRequired);
+
+            RuleFor(x => x.Dto.NewPassword)
                 .NotEmpty().WithMessage(ValidationRules.PasswordRequired)
                 .MinimumLength(8).WithMessage(ValidationRules.PasswordMinLengthRequired)
                 .Matches("[A-Z]").WithMessage(ValidationRules.PasswordUppercaseRequired)

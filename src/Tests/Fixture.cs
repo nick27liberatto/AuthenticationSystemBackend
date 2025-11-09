@@ -1,9 +1,7 @@
 ﻿namespace Tests
 {
     using AutoMapper;
-    using Domain.Interfaces;
     using FluentValidation;
-    using Infrastructure.Repository;
     using MediatR;
     using Moq;
 

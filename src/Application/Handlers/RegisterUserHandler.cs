@@ -1,37 +1,72 @@
 ﻿namespace Application.Handlers
 {
     using Application.Commands;
-    using Application.Dtos.Response;
+    using Application.Constants.Response;
+    using Application.DTOs;
+    using Application.Interfaces;
     using AutoMapper;
-    using Domain.Interfaces;
     using Domain.Models;
+    using FluentResults;
+    using FluentValidation;
     using MediatR;
     using Microsoft.AspNetCore.Identity;
+    using Microsoft.Extensions.Logging;
+    using System.Reflection;
     using System.Threading;
     using System.Threading.Tasks;
 
-    public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, UserResponseDto>
+    public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<AuthResultDto>>
     {
-        private readonly IRepository<User> _repository;
+        private readonly UserManager<User> _userManager;
+        private readonly IJwtTokenGenerator _jwtGenerator;
         private readonly IMapper _mapper;
-        private readonly PasswordHasher<User> _passwordHasher;
+        private readonly IValidator<RegisterUserCommand> _validator;
+        private readonly ILogger<RegisterUserHandler> _logger;
 
-        public RegisterUserHandler(IRepository<User> repository, IMapper mapper)
+        public RegisterUserHandler(UserManager<User> userManager, 
+            IJwtTokenGenerator jwtTokenGenerator, 
+            IMapper mapper, 
+            IValidator<RegisterUserCommand> validator,
+            ILogger<RegisterUserHandler> logger)
         {
-            _repository = repository;
+            _userManager = userManager;
+            _jwtGenerator = jwtTokenGenerator;
             _mapper = mapper;
-            _passwordHasher = new PasswordHasher<User>();
+            _validator = validator;
+            _logger = logger;
         }
 
-        public async Task<UserResponseDto> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
+        public async Task<Result<AuthResultDto>> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
         {
-            var user = _mapper.Map<User>(request);
-            
-            user.Password = _passwordHasher.HashPassword(user, request.Password);
+            var validation = await _validator.ValidateAsync(request, cancellationToken);
+            if (!validation.IsValid)
+                return Result.Fail<AuthResultDto>(MessageError.UserRegistrationValidationFailed)
+                    .WithErrors(validation.Errors.Select(e => e.ErrorMessage));
 
-            await _repository.AddAsync(user);
-            
-            return _mapper.Map<UserResponseDto>(user);
+            if (await _userManager.FindByEmailAsync(request.Dto.Email) != null)
+                return Result.Fail<AuthResultDto>(MessageError.EmailAlreadyRegistered);
+
+            var user = _mapper.Map<User>(request.Dto);
+            user.IsActive = true;
+
+            IdentityResult result;
+            try
+            {
+                result = await _userManager.CreateAsync(user, request.Dto.Password);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, MessageError.UserRegistrationFailed);
+                return Result.Fail<AuthResultDto>(MessageError.UserRegistrationFailed);
+            }
+
+            if (!result.Succeeded)
+                return Result.Fail<AuthResultDto>(MessageError.UserRegistrationFailed)
+                    .WithErrors(result.Errors.Select(e => e.Description));
+
+            var token = _jwtGenerator.GenerateToken(user);
+            var dto = _mapper.Map<AuthResultDto>(user) with { Token = token };
+            return Result.Ok(dto).WithSuccess(MessageSuccess.UserRegistered);
         }
     }
 }

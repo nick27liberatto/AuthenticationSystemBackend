@@ -1,10 +1,11 @@
 ﻿namespace Domain.Models
 {
-    public class User
+    using Microsoft.AspNetCore.Identity;
+
+    public class User : IdentityUser<int>
     {
-        public int Id { get; set; }
-        public required string Username { get; set; }
-        public required string Email { get; set; }
-        public required string Password { get; set; }
+        public string? FullName { get; set; }
+        public bool IsActive { get; set; } = true;
+        public ICollection<RefreshToken>? RefreshTokens { get; set; }
     }
 }

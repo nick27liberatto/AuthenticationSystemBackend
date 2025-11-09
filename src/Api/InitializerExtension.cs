@@ -1,15 +1,20 @@
 ﻿namespace Api;
 
 using Application.Handlers;
+using Application.Interfaces;
 using Application.Mapper;
 using Application.Validators;
-using Domain.Interfaces;
+using Domain.Models;
 using FluentValidation;
+using Infrastructure.Authentication;
+using Infrastructure.Configurations;
 using Infrastructure.Context;
-using Infrastructure.Repository;
+using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
@@ -29,22 +34,65 @@ public class InitializerExtension
 
     public static void ConfigureServices(WebApplicationBuilder builder)
     {
-        builder.Services.AddControllers();
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-        builder.Services.AddDbContext<OracleContext>(opt =>
-            opt.UseOracle(builder.Configuration.GetConnectionString("Oracle")));
+        builder.Services.AddDbContext<AppDbContext>(opt =>
+            opt.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
         builder.Services.AddMediatR(cfg =>
             cfg.RegisterServicesFromAssembly(typeof(RegisterUserHandler).Assembly));
 
-        builder.Services.AddAutoMapper(cfg =>
-        {
-            cfg.AddProfile<UserProfile>();
-        });
-
         builder.Services.AddValidatorsFromAssembly(typeof(RegisterUserValidator).Assembly);
 
-        builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        builder.Services.AddAutoMapper(cfg =>
+        {
+            cfg.AddProfile<AuthProfile>();
+        });
+
+
+        builder.Services.Configure<FrontendSettings>(builder.Configuration.GetSection("Frontend"));
+        builder.Services.AddSingleton<IFrontendSettings>(sp =>
+            sp.GetRequiredService<IOptions<FrontendSettings>>().Value
+        );
+
+        builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
+        builder.Services.AddTransient<IEmailService, SmtpEmailService>();
+
+        builder.Services.AddIdentity<User, Role>(options =>
+        {
+            options.Password.RequiredLength = 10;
+            options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequireUppercase = false;
+            options.Password.RequireDigit = true;
+            options.User.RequireUniqueEmail = true;
+        })
+        .AddEntityFrameworkStores<AppDbContext>()
+        .AddDefaultTokenProviders();
+
+        builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+        builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+
+        var jwtSettings = builder.Configuration.GetSection("Jwt");
+        var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
+
+        builder.Services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwtSettings["Issuer"],
+                ValidAudience = jwtSettings["Audience"],
+                IssuerSigningKey = new SymmetricSecurityKey(key)
+            };
+        });
 
         builder.Services.AddEndpointsApiExplorer();
 
@@ -73,28 +121,7 @@ public class InitializerExtension
             });
         });
 
-        var keyString = builder.Configuration.GetValue<string>("Jwt:Key");
-        var key = Encoding.ASCII.GetBytes(keyString);
-        var issuer = builder.Configuration.GetValue<string>("Jwt:Issuer");
-        var audience = builder.Configuration.GetValue<string>("Jwt:Audience");
-
-        builder.Services.AddAuthentication(options =>
-        {
-            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-        })
-        .AddJwtBearer(options =>
-        {
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateIssuerSigningKey = true,
-                ValidIssuer = issuer,
-                ValidAudience = audience,
-                IssuerSigningKey = new SymmetricSecurityKey(key)
-            };
-        });
+        builder.Services.AddControllers();
     }
 
     public static void ConfigureMiddleWare(WebApplication app)
@@ -107,6 +134,8 @@ public class InitializerExtension
         app.UseRouting();
 
         app.UseCors("AllowAll");
+
+        app.UseAuthentication();
 
         app.UseAuthorization();
 

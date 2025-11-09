@@ -4,9 +4,9 @@
     using Application.Constants.Validation;
     using FluentValidation;
 
-    public class LoginUserValidator : AbstractValidator<LoginUserCommand>
+    public class ForgotPasswordValidator : AbstractValidator<ForgotPasswordCommand>
     {
-        public LoginUserValidator()
+        public ForgotPasswordValidator()
         {
             RuleFor(x => x.Dto)
                 .NotNull().WithMessage(ValidationRules.DtoRequired);
@@ -14,9 +14,6 @@
             RuleFor(x => x.Dto.Email)
                 .NotEmpty().WithMessage(ValidationRules.EmailRequired)
                 .EmailAddress().WithMessage(ValidationRules.EmailValidRequired);
-
-            RuleFor(x => x.Dto.Password)
-                .NotEmpty().WithMessage(ValidationRules.PasswordRequired);
         }
     }
 }

@@ -1,73 +1,69 @@
 ﻿namespace Application.Handlers
 {
-    using Application.Dtos.Response;
-    using Application.Queries;
+    using Application.Commands;
+    using Application.Constants.Response;
+    using Application.DTOs;
+    using Application.Interfaces;
     using AutoMapper;
-    using Domain.Interfaces;
     using Domain.Models;
+    using FluentResults;
+    using FluentValidation;
     using MediatR;
     using Microsoft.AspNetCore.Identity;
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.Extensions.Configuration;
-    using Microsoft.IdentityModel.Tokens;
-    using System.IdentityModel.Tokens.Jwt;
-    using System.Security.Claims;
-    using System.Text;
+    using Microsoft.Extensions.Logging;
     using System.Threading;
     using System.Threading.Tasks;
 
-    public class LoginUserHandler : IRequestHandler<LoginUserCommand, ActionResult<LoginUserResponseDto>>
+    public class LoginUserHandler : IRequestHandler<LoginUserCommand, Result<AuthResultDto>>
     {
-        private readonly IRepository<User> _repository;
+        private readonly UserManager<User> _userManager;
+        private readonly SignInManager<User> _signInManager;
+        private readonly IJwtTokenGenerator _jwtGenerator;
         private readonly IMapper _mapper;
-        private readonly PasswordHasher<User> _passwordHasher;
-        private readonly IConfiguration _configuration;
+        private readonly IValidator<LoginUserCommand> _validator;
+        private readonly ILogger<LoginUserHandler> _logger;
 
-        public LoginUserHandler(IRepository<User> repository, IMapper mapper, IConfiguration configuration)
+        public LoginUserHandler(UserManager<User> userManager, 
+            SignInManager<User> signInManager, 
+            IJwtTokenGenerator jwtTokenGenerator, 
+            IMapper mapper,
+            IValidator<LoginUserCommand> validator,
+            ILogger<LoginUserHandler> logger)
         {
-            _repository = repository;
+            _userManager = userManager;
+            _signInManager = signInManager;
+            _jwtGenerator = jwtTokenGenerator;
             _mapper = mapper;
-            _passwordHasher = new PasswordHasher<User>();
-            _configuration = configuration;
+            _validator = validator;
+            _logger = logger;
         }
 
-        public async Task<ActionResult<LoginUserResponseDto>> Handle(LoginUserCommand request, CancellationToken cancellationToken)
+        public async Task<Result<AuthResultDto>> Handle(LoginUserCommand request, CancellationToken cancellationToken)
         {
-            var users = await _repository.GetAllAsync();
-            var user = users.FirstOrDefault(x => x.Email == request.Email);
+            var validation = await _validator.ValidateAsync(request, cancellationToken);
+            if (!validation.IsValid)
+                return Result.Fail<AuthResultDto>(MessageError.UserLoggingValidationFailed)
+                    .WithErrors(validation.Errors.Select(e => e.ErrorMessage));
 
-            if (user == null)
+            try
             {
-                return new NotFoundResult();
+                var user = await _userManager.FindByEmailAsync(request.Dto.Email);
+                if (user == null || !user.IsActive)
+                    return Result.Fail<AuthResultDto>(MessageError.InvalidCredentials);
+
+                var valid = await _signInManager.CheckPasswordSignInAsync(user, request.Dto.Password, false);
+                if (!valid.Succeeded)
+                    return Result.Fail<AuthResultDto>(MessageError.InvalidCredentials);
+
+                var token = _jwtGenerator.GenerateToken(user);
+                var dto = _mapper.Map<AuthResultDto>(user) with { Token = token };
+                return Result.Ok(dto).WithSuccess(MessageSuccess.UserLoggedIn);
             }
-
-            var autenticacao = _passwordHasher.VerifyHashedPassword(user, user.Password, request.Password);
-
-            if (autenticacao == PasswordVerificationResult.Failed)
+            catch (Exception ex)
             {
-                return new UnauthorizedResult();
+                _logger.LogError(ex, MessageError.ErrorLoggingUser, request.Dto.Email);
+                return Result.Fail<AuthResultDto>(MessageError.ErrorLoggingIn);
             }
-
-            var key = Encoding.ASCII.GetBytes(_configuration.GetValue<string>("Jwt:Key"));
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new[]
-                {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Username)
-            }),
-                Expires = DateTime.UtcNow.AddMinutes(_configuration.GetValue<int>("Jwt:ExpiresInMinutes")),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            var tokenString = tokenHandler.WriteToken(token);
-
-            var response = _mapper.Map<LoginUserResponseDto>(user);
-            response.Token = tokenString;
-
-            return new OkObjectResult(response); 
         }
     }
 }
