@@ -8,5 +8,4 @@
     public record LoginUserCommand(LoginUserDto Dto) : IRequest<Result<AuthResultDto>>;
     public record ForgotPasswordCommand(ForgotPasswordDto Dto) : IRequest<Result>;
     public record ResetPasswordCommand(ResetPasswordDto Dto) : IRequest<Result>;
-    public record SocialLoginCommand(SocialLoginDto Dto) : IRequest<Result<AuthResultDto>>;
 }

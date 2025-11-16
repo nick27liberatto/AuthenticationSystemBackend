@@ -3,6 +3,7 @@
     using Application.Commands;
     using Application.DTOs;
     using Application.Extensions;
+    using Application.Queries;
     using AutoMapper;
     using MediatR;
     using Microsoft.AspNetCore.Mvc;
@@ -20,13 +21,19 @@
             _mapper = mapper;
         }
 
-        [HttpPost("social-login")]
-        public async Task<IActionResult> SocialLogin([FromBody] SocialLoginDto dto)
+        [HttpGet("external/{provider}")]
+        public async Task<IActionResult> ExternalLogin([FromRoute] string provider)
         {
-            var response = await _mediator.Send(new SocialLoginCommand(dto));
-            return response.ToActionResult();
+            var response = await _mediator.Send(new ExternalLoginQuery(provider, HttpContext));
+            return response;
         }
 
+        [HttpGet("external/callback")]
+        public async Task<IActionResult> ExternalCallback([FromQuery] string code, [FromQuery] string state, [FromQuery] string provider)
+        {
+            var response = await _mediator.Send(new ExternalCallbackQuery(code, state, provider, HttpContext));
+            return response;
+        }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterUserDto dto)

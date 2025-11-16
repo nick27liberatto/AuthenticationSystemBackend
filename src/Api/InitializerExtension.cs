@@ -17,6 +17,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Net.Http.Headers;
 using System.Text;
 
 public class InitializerExtension
@@ -57,6 +58,7 @@ public class InitializerExtension
 
         builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
         builder.Services.AddTransient<IEmailService, SmtpEmailService>();
+        builder.Services.AddScoped<IExternalAuthService, ExternalAuthService>();
 
         builder.Services.AddIdentity<User, Role>(options =>
         {
@@ -71,7 +73,7 @@ public class InitializerExtension
 
         builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
         builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
-
+        
         var jwtSettings = builder.Configuration.GetSection("Jwt");
         var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
 
@@ -92,6 +94,11 @@ public class InitializerExtension
                 ValidAudience = jwtSettings["Audience"],
                 IssuerSigningKey = new SymmetricSecurityKey(key)
             };
+        });
+
+        builder.Services.AddHttpClient("GoogleOAuth", client =>
+        {
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         });
 
         builder.Services.AddEndpointsApiExplorer();

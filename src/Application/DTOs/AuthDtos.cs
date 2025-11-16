@@ -28,8 +28,21 @@
         public string Email { get; init; } = string.Empty;
     };
 
-    public record SocialLoginDto(
-        string Provider, 
-        string Token
-    );
+    public class ExternalUserDto
+    {
+        public string Email { get; set; } = null!;
+        public string Name { get; set; } = null!;
+        public string Provider { get; set; } = null!;
+        public string ProviderId { get; set; } = null!;
+        public string Picture { get; set; } = null!;
+        public string AccessToken { get; set; } = null!;
+        public string IdToken { get; set; } = null!;
+    };
+
+    public class ExternalAuthResultDto
+    {
+        public bool Success { get; set; }
+        public string AccessToken { get; set; } = string.Empty;
+        public string Error { get; set; } = string.Empty;
+    }
 }

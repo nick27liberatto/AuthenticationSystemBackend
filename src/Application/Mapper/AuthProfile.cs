@@ -9,10 +9,6 @@
     {
         public AuthProfile()
         {
-
-            CreateMap<SocialLoginDto, SocialLoginCommand>()
-                .ConstructUsing(dto => new SocialLoginCommand(dto));
-
             CreateMap<RegisterUserDto, RegisterUserCommand>()
             .ConstructUsing(dto => new RegisterUserCommand(dto));
 
